@@ -10,6 +10,11 @@ ifeq ($(FAST), true)
 PHP_FILES_CHANGED := $(shell bin/ls_changed_files --ext=.php src tests)
 endif
 
+HAS_BEHAT := false
+ifneq ("$(wildcard vendor/bin/behat)","")
+HAS_BEHAT := true
+endif
+
 help:
 	@echo "\033[33m Usage:\033[39m"
 	@echo "  make COMMAND"
@@ -36,6 +41,9 @@ help:
 	@echo "\033[32m   phpstan          \033[39m   Find bugs in the code"
 	@echo ""
 	@echo "\033[33m Tests commands:\033[39m"
+ifeq ($(HAS_BEHAT), true)
+	@echo "\033[32m   behat            \033[39m   Run behat tests"
+endif
 	@echo "\033[32m   phpunit          \033[39m   Run phpunit tests"
 	@echo "\033[32m   phpunit-coverage \033[39m   Run phpunit tests with code coverage"
 
@@ -59,7 +67,8 @@ endif
 ###> meta ###
 .PHONY: push
 
-push: composer-validate php-cs-fixer-check phpstan phpunit
+# priority matters: faster script should be run first for faster feedback
+push: composer-validate php-cs-fixer-check phpstan phpunit behat
 # $(make push) should print a warning message if the thing we are about to push is not the same thing the command has tested.
 	@echo ""
 	@echo "  \033[97;44m                                                                              \033[39;49m"
@@ -149,7 +158,13 @@ endif
 ###< check commands ###
 
 ###> tests commands ###
-.PHONY: phpunit phpunit-coverage
+.PHONY: behat phpunit phpunit-coverage
+
+behat:
+ifeq ($(HAS_BEHAT), true)
+	@echo "\n\033[33m    php vendor/bin/behat -v\033[39m\n"
+	@                    php vendor/bin/behat -v
+endif
 
 phpunit:
 	@echo "\n\033[33m    docker-compose exec php php vendor/bin/simple-phpunit\033[39m\n"
