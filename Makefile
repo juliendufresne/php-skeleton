@@ -33,6 +33,7 @@ help:
 	@echo ""
 	@echo "\033[33m Checks commands:\033[39m"
 	@echo "\033[32m   php-cs-fixer     \033[39m   Fix code style in php files"
+	@echo "\033[32m   phpstan          \033[39m   Find bugs in the code"
 	@echo ""
 	@echo "\033[33m Tests commands:\033[39m"
 	@echo "\033[32m   phpunit          \033[39m   Run phpunit tests"
@@ -58,7 +59,7 @@ endif
 ###> meta ###
 .PHONY: push
 
-push: composer-validate php-cs-fixer-check phpunit
+push: composer-validate php-cs-fixer-check phpstan phpunit
 # $(make push) should print a warning message if the thing we are about to push is not the same thing the command has tested.
 	@echo ""
 	@echo "  \033[97;44m                                                                              \033[39;49m"
@@ -104,7 +105,7 @@ composer-validate:
 ###< composer commands ###
 
 ###> check commands ###
-.PHONY: php-cs-fixer php-cs-fixer-check
+.PHONY: php-cs-fixer php-cs-fixer-check phpstan phpstan
 
 ifeq ($(FAST), false)
 php-cs-fixer:
@@ -129,6 +130,20 @@ php-cs-fixer-check:
 	@                    php vendor/bin/php-cs-fixer fix -vvv --dry-run --config=.php_cs.dist --path-mode=intersection $(PHP_FILES_CHANGED)
 else
 php-cs-fixer-check:
+	@echo "You have made no change in PHP files compared to master"
+endif
+
+
+ifeq ($(FAST), false)
+phpstan:
+	@echo "\n\033[33m    php vendor/bin/phpstan analyse --no-progress --autoload-file=vendor/autoload.php --level=7 src tests\033[39m\n"
+	@                    php vendor/bin/phpstan analyse --no-progress --autoload-file=vendor/autoload.php --level=7 src tests
+else ifneq ($(PHP_FILES_CHANGED),)
+phpstan:
+	@echo "\n\033[33m    php vendor/bin/phpstan analyse --no-progress --autoload-file=vendor/autoload.php --level=7 $(PHP_FILES_CHANGED)\033[39m\n"
+	@                    php vendor/bin/phpstan analyse --no-progress --autoload-file=vendor/autoload.php --level=7 $(PHP_FILES_CHANGED)
+else
+phpstan:
 	@echo "You have made no change in PHP files compared to master"
 endif
 ###< check commands ###
