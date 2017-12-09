@@ -33,12 +33,16 @@ help:
 	@echo ""
 	@echo "\033[33m Checks commands:\033[39m"
 	@echo "\033[32m   php-cs-fixer     \033[39m   Fix code style in php files"
+	@echo ""
+	@echo "\033[33m Tests commands:\033[39m"
+	@echo "\033[32m   phpunit          \033[39m   Run phpunit tests"
+	@echo "\033[32m   phpunit-coverage \033[39m   Run phpunit tests with code coverage"
 
 ###> install commands ###
 .PHONY: clean install
 clean:
 	@rm -f .env
-	@rm -rf var vendor
+	@rm -rf reports var vendor
 
 install: .env
 ifeq ($(DEBUG), true)
@@ -54,7 +58,7 @@ endif
 ###> meta ###
 .PHONY: push
 
-push: composer-validate php-cs-fixer-check
+push: composer-validate php-cs-fixer-check phpunit
 # $(make push) should print a warning message if the thing we are about to push is not the same thing the command has tested.
 	@echo ""
 	@echo "  \033[97;44m                                                                              \033[39;49m"
@@ -128,3 +132,15 @@ php-cs-fixer-check:
 	@echo "You have made no change in PHP files compared to master"
 endif
 ###< check commands ###
+
+###> tests commands ###
+.PHONY: phpunit phpunit-coverage
+
+phpunit:
+	@echo "\n\033[33m    docker-compose exec php php vendor/bin/simple-phpunit\033[39m\n"
+	@                    docker-compose exec php php vendor/bin/simple-phpunit
+
+phpunit-coverage:
+	@echo "\n\033[33m    docker-compose exec php php -dzend_extension=xdebug.so vendor/bin/simple-phpunit --coverage-html reports/coverage --coverage-clover reports/clover.xml\033[39m\n"
+	@                    docker-compose exec php php -dzend_extension=xdebug.so vendor/bin/simple-phpunit --coverage-html reports/coverage --coverage-clover reports/clover.xml
+###< tests commands ###
