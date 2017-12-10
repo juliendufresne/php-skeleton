@@ -15,6 +15,13 @@ ifneq ("$(wildcard vendor/bin/behat)","")
 HAS_BEHAT := true
 endif
 
+HAS_TWIG := false
+ifneq ("$(wildcard vendor/symfony/twig-bridge)","")
+ifneq ("$(wildcard templates)","")
+HAS_TWIG := true
+endif
+endif
+
 help:
 	@echo "\033[33m Usage:\033[39m"
 	@echo "  make COMMAND"
@@ -35,8 +42,14 @@ help:
 	@echo ""
 	@echo "\033[33m Meta commands:\033[39m"
 	@echo "\033[32m   push             \033[39m   Run all checks and tests"
+	@echo "\033[32m   lint             \033[39m   Run all linters"
 	@echo ""
 	@echo "\033[33m Checks commands:\033[39m"
+	@echo "\033[32m   lint-php         \033[39m   Checks PHP files syntax"
+ifeq ($(HAS_TWIG), true)
+	@echo "\033[32m   lint-twig        \033[39m   Checks twig files syntax"
+endif
+	@echo "\033[32m   lint-yaml        \033[39m   Checks yaml files syntax"
 	@echo "\033[32m   php-cs-fixer     \033[39m   Fix code style in php files"
 	@echo "\033[32m   phpstan          \033[39m   Find bugs in the code"
 	@echo ""
@@ -65,10 +78,10 @@ endif
 ###< install commands ###
 
 ###> meta ###
-.PHONY: push
+.PHONY: lint push
 
 # priority matters: faster script should be run first for faster feedback
-push: composer-validate php-cs-fixer-check phpstan phpunit behat
+push: composer-validate lint php-cs-fixer-check phpstan phpunit behat
 # $(make push) should print a warning message if the thing we are about to push is not the same thing the command has tested.
 	@echo ""
 	@echo "  \033[97;44m                                                                              \033[39;49m"
@@ -91,6 +104,8 @@ else
 	@echo "  \033[97;43m                                                                              \033[39;49m"
 	@echo ""
 endif
+
+lint: lint-php lint-twig lint-yaml
 ###< meta ###
 
 ###> composer commands ###
@@ -114,7 +129,30 @@ composer-validate:
 ###< composer commands ###
 
 ###> check commands ###
-.PHONY: php-cs-fixer php-cs-fixer-check phpstan phpstan
+.PHONY: lint-* php-cs-fixer php-cs-fixer-check phpstan phpstan
+
+ifeq ($(FAST), false)
+lint-php:
+	@echo "\n\033[33m    php vendor/bin/parallel-lint --exclude var --exclude vendor .\033[39m\n"
+	@                    php vendor/bin/parallel-lint --exclude var --exclude vendor .
+else ifneq ($(PHP_FILES_CHANGED),)
+lint-php:
+	@echo "\n\033[33m    php vendor/bin/parallel-lint $(PHP_FILES_CHANGED)\033[39m\n"
+	@                    php vendor/bin/parallel-lint $(PHP_FILES_CHANGED)
+else
+lint-php:
+	@echo "You have made no change in PHP files compared to master"
+endif
+
+lint-twig:
+ifeq ($(HAS_TWIG), true)
+	@echo "\n\033[33m    php bin/console lint:twig templates\033[39m\n"
+	@                    php bin/console lint:twig templates
+endif
+
+lint-yaml:
+	@echo "\n\033[33m    php bin/console lint:yaml config\033[39m\n"
+	@                    php bin/console lint:yaml config
 
 ifeq ($(FAST), false)
 php-cs-fixer:
