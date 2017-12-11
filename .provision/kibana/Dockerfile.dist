@@ -1,0 +1,5 @@
+#version available here: https://www.docker.elastic.co/
+FROM docker.elastic.co/kibana/kibana:5.6.5
+
+# x-pack adds to much security for our usage
+RUN bin/kibana-plugin remove x-pack

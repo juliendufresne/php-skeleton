@@ -1,0 +1,73 @@
+version: '3'
+
+services:
+    php:
+        build: ./.provision/php
+#        links:
+#            - elasticsearch
+#            - mariadb
+#            - rabbitmq
+#            - redis
+        volumes:
+            - "./:/app"
+#
+#    elasticsearch:
+#        build: ./.provision/elasticsearch
+#        ulimits:
+#            memlock:
+#                soft: -1
+#                hard: -1
+#        volumes:
+#            - ./.provision/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:cached
+#            - ./.provision/elasticsearch/config/jvm.options:/usr/share/elasticsearch/config/jvm.options:cached
+#        ports:
+#          - 9200:9200
+#
+#    kibana:
+#        build: ./.provision/kibana
+#        links:
+#            - elasticsearch
+#        volumes:
+#            - ./.provision/kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:cached
+#        ports:
+#          - 5601:5601
+#
+#    mariadb:
+#        build: ./.provision/mariadb
+#        env_file:
+#            - ./.env
+#        environment:
+#            MYSQL_ROOT_PASSWORD: root
+#            MYSQL_DATABASE: ${ES_INDEXER_DB_NAME}
+#            MYSQL_USER: ${ES_INDEXER_DB_USER}
+#            MYSQL_PASSWORD: ${ES_INDEXER_DB_PASS}
+#        volumes:
+#          - ./.provision/data/mariadb:/docker-entrypoint-initdb.d:cached
+#    nginx:
+#        image: nginx:1.13-alpine
+#        depends_on:
+#            - php
+#        volumes:
+#            # Comment out the next line in production
+#            - ./.provision/nginx/config:/etc/nginx/conf.d:ro
+#            - ./public:/app/public:ro
+#        ports:
+#            - '80:80'
+#
+#    rabbitmq:
+#        build: ./.provision/rabbitmq
+#        env_file:
+#            - ./.env
+#        environment:
+#          - RABBITMQ_DEFAULT_USER=${ES_INDEXER_RABBIT_USER}
+#          - RABBITMQ_DEFAULT_PASS=${ES_INDEXER_RABBIT_PASS}
+#          - RABBITMQ_DEFAULT_VHOST=${ES_INDEXER_RABBIT_VHOST}
+#        ports:
+#            - 15672:15672
+#        volumes:
+#          - ./.provision/rabbitmq/config/setup.sh:/etc/rabbitmq/setup.sh:cached
+#
+#    redis:
+#        image: redis:3
+#        ports:
+#            - 6379:6379

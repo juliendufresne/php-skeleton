@@ -1,0 +1,4 @@
+FROM rabbitmq:3-management-alpine
+
+# install rabbitmqadmin
+RUN apk add --no-cache python
