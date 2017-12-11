@@ -1,0 +1,5 @@
+#version available here: https://www.docker.elastic.co/
+FROM docker.elastic.co/elasticsearch/elasticsearch:5.6.5
+
+# x-pack adds to much security for our usage
+RUN bin/elasticsearch-plugin remove x-pack --purge

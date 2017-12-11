@@ -22,6 +22,12 @@ HAS_TWIG := true
 endif
 endif
 
+DOCKERFILES := .provision/elasticsearch/Dockerfile \
+               .provision/kibana/Dockerfile \
+               .provision/mariadb/Dockerfile \
+               .provision/php/Dockerfile \
+               .provision/rabbitmq/Dockerfile
+
 help:
 	@echo "\033[33m Usage:\033[39m"
 	@echo "  make COMMAND"
@@ -63,18 +69,28 @@ endif
 ###> install commands ###
 .PHONY: clean install
 clean:
-	@rm -f .env
+	@[ -f docker-compose.yml ] && { docker-compose down; docker volume prune --force; } || true
+	@rm -f .env docker-compose.yml $(DOCKERFILES)
 	@rm -rf reports var vendor
 
-install: .env
+install:
 ifeq ($(DEBUG), true)
 	@$(MAKE) -s clean
-	@$(MAKE) -s .env
 endif
+	@$(MAKE) -s .env docker-compose.yml $(DOCKERFILES)
+	@docker-compose build
+	@docker-compose up --build -d
 	@$(MAKE) -s composer-install
 
 .env: .env.dist
 	@cp $< $@
+
+docker-compose.yml: docker-compose.yml.dist
+	@cp $< $@
+
+.provision/%/Dockerfile: .provision/%/Dockerfile.dist
+	@sed -e "s/{USER_ID}/$(shell id -u)/g" -e "s/{GROUP_ID}/$(shell id -g)/g" $< > $@
+
 ###< install commands ###
 
 ###> meta ###
@@ -112,20 +128,20 @@ lint: lint-php lint-twig lint-yaml
 .PHONY: composer-*
 
 composer-install:
-	@echo "\n\033[33m    composer install --no-progress --prefer-dist --no-suggest\033[39m\n"
-	@                    composer install --no-progress --prefer-dist --no-suggest
+	@echo "\n\033[33m    docker-compose exec php composer install --no-progress --prefer-dist --no-suggest\033[39m\n"
+	@                    docker-compose exec php composer install --no-progress --prefer-dist --no-suggest
 
 composer-outdated:
-	@echo "\n\033[33m    composer outdated\033[39m\n"
-	@                    composer outdated
+	@echo "\n\033[33m    docker-compose exec php composer outdated\033[39m\n"
+	@                    docker-compose exec php composer outdated
 
 composer-update:
-	@echo "\n\033[33m    composer update\033[39m\n"
-	@                    composer update
+	@echo "\n\033[33m    docker-compose exec php composer update\033[39m\n"
+	@                    docker-compose exec php composer update
 
 composer-validate:
-	@echo "\n\033[33m    composer validate\033[39m\n"
-	@                    composer validate
+	@echo "\n\033[33m    docker-compose exec php composer validate\033[39m\n"
+	@                    docker-compose exec php composer validate
 ###< composer commands ###
 
 ###> check commands ###
@@ -133,12 +149,12 @@ composer-validate:
 
 ifeq ($(FAST), false)
 lint-php:
-	@echo "\n\033[33m    php vendor/bin/parallel-lint --exclude var --exclude vendor .\033[39m\n"
-	@                    php vendor/bin/parallel-lint --exclude var --exclude vendor .
+	@echo "\n\033[33m    docker-compose exec php php vendor/bin/parallel-lint --exclude var --exclude vendor .\033[39m\n"
+	@                    docker-compose exec php php vendor/bin/parallel-lint --exclude var --exclude vendor .
 else ifneq ($(PHP_FILES_CHANGED),)
 lint-php:
-	@echo "\n\033[33m    php vendor/bin/parallel-lint $(PHP_FILES_CHANGED)\033[39m\n"
-	@                    php vendor/bin/parallel-lint $(PHP_FILES_CHANGED)
+	@echo "\n\033[33m    docker-compose exec php php vendor/bin/parallel-lint $(PHP_FILES_CHANGED)\033[39m\n"
+	@                    docker-compose exec php php vendor/bin/parallel-lint $(PHP_FILES_CHANGED)
 else
 lint-php:
 	@echo "You have made no change in PHP files compared to master"
@@ -146,22 +162,22 @@ endif
 
 lint-twig:
 ifeq ($(HAS_TWIG), true)
-	@echo "\n\033[33m    php bin/console lint:twig templates\033[39m\n"
-	@                    php bin/console lint:twig templates
+	@echo "\n\033[33m    docker-compose exec php php bin/console lint:twig templates\033[39m\n"
+	@                    docker-compose exec php php bin/console lint:twig templates
 endif
 
 lint-yaml:
-	@echo "\n\033[33m    php bin/console lint:yaml config\033[39m\n"
-	@                    php bin/console lint:yaml config
+	@echo "\n\033[33m    docker-compose exec php php bin/console lint:yaml config\033[39m\n"
+	@                    docker-compose exec php php bin/console lint:yaml config
 
 ifeq ($(FAST), false)
 php-cs-fixer:
-	@echo "\n\033[33m    php vendor/bin/php-cs-fixer fix -vvv\033[39m\n"
-	@                    php vendor/bin/php-cs-fixer fix -vvv
+	@echo "\n\033[33m    docker-compose exec php php vendor/bin/php-cs-fixer fix -vvv\033[39m\n"
+	@                    docker-compose exec php php vendor/bin/php-cs-fixer fix -vvv
 else ifneq ($(PHP_FILES_CHANGED),)
 php-cs-fixer:
-	@echo "\n\033[33m    php vendor/bin/php-cs-fixer fix -vvv --config=.php_cs.dist --path-mode=intersection $(PHP_FILES_CHANGED)\033[39m\n"
-	@                    php vendor/bin/php-cs-fixer fix -vvv --config=.php_cs.dist --path-mode=intersection $(PHP_FILES_CHANGED)
+	@echo "\n\033[33m    docker-compose exec php php vendor/bin/php-cs-fixer fix -vvv --config=.php_cs.dist --path-mode=intersection $(PHP_FILES_CHANGED)\033[39m\n"
+	@                    docker-compose exec php php vendor/bin/php-cs-fixer fix -vvv --config=.php_cs.dist --path-mode=intersection $(PHP_FILES_CHANGED)
 else
 php-cs-fixer:
 	@echo "You have made no change in PHP files compared to master"
@@ -169,12 +185,12 @@ endif
 
 ifeq ($(FAST), false)
 php-cs-fixer-check:
-	@echo "\n\033[33m    php vendor/bin/php-cs-fixer fix -vvv --dry-run\033[39m\n"
-	@                    php vendor/bin/php-cs-fixer fix -vvv --dry-run
+	@echo "\n\033[33m    docker-compose exec php php vendor/bin/php-cs-fixer fix -vvv --dry-run\033[39m\n"
+	@                    docker-compose exec php php vendor/bin/php-cs-fixer fix -vvv --dry-run
 else ifneq ($(PHP_FILES_CHANGED),)
 php-cs-fixer-check:
-	@echo "\n\033[33m    php vendor/bin/php-cs-fixer fix -vvv --dry-run --config=.php_cs.dist --path-mode=intersection $(PHP_FILES_CHANGED)\033[39m\n"
-	@                    php vendor/bin/php-cs-fixer fix -vvv --dry-run --config=.php_cs.dist --path-mode=intersection $(PHP_FILES_CHANGED)
+	@echo "\n\033[33m    docker-compose exec php php vendor/bin/php-cs-fixer fix -vvv --dry-run --config=.php_cs.dist --path-mode=intersection $(PHP_FILES_CHANGED)\033[39m\n"
+	@                    docker-compose exec php php vendor/bin/php-cs-fixer fix -vvv --dry-run --config=.php_cs.dist --path-mode=intersection $(PHP_FILES_CHANGED)
 else
 php-cs-fixer-check:
 	@echo "You have made no change in PHP files compared to master"
@@ -183,12 +199,12 @@ endif
 
 ifeq ($(FAST), false)
 phpstan:
-	@echo "\n\033[33m    php vendor/bin/phpstan analyse --no-progress --autoload-file=vendor/autoload.php --level=7 src tests\033[39m\n"
-	@                    php vendor/bin/phpstan analyse --no-progress --autoload-file=vendor/autoload.php --level=7 src tests
+	@echo "\n\033[33m    docker-compose exec php php vendor/bin/phpstan analyse --no-progress --autoload-file=vendor/autoload.php --level=7 src tests\033[39m\n"
+	@                    docker-compose exec php php vendor/bin/phpstan analyse --no-progress --autoload-file=vendor/autoload.php --level=7 src tests
 else ifneq ($(PHP_FILES_CHANGED),)
 phpstan:
-	@echo "\n\033[33m    php vendor/bin/phpstan analyse --no-progress --autoload-file=vendor/autoload.php --level=7 $(PHP_FILES_CHANGED)\033[39m\n"
-	@                    php vendor/bin/phpstan analyse --no-progress --autoload-file=vendor/autoload.php --level=7 $(PHP_FILES_CHANGED)
+	@echo "\n\033[33m    docker-compose exec php php vendor/bin/phpstan analyse --no-progress --autoload-file=vendor/autoload.php --level=7 $(PHP_FILES_CHANGED)\033[39m\n"
+	@                    docker-compose exec php php vendor/bin/phpstan analyse --no-progress --autoload-file=vendor/autoload.php --level=7 $(PHP_FILES_CHANGED)
 else
 phpstan:
 	@echo "You have made no change in PHP files compared to master"
@@ -200,8 +216,8 @@ endif
 
 behat:
 ifeq ($(HAS_BEHAT), true)
-	@echo "\n\033[33m    php vendor/bin/behat -v\033[39m\n"
-	@                    php vendor/bin/behat -v
+	@echo "\n\033[33m    docker-compose exec php php vendor/bin/behat -v\033[39m\n"
+	@                    docker-compose exec php php vendor/bin/behat -v
 endif
 
 phpunit:

@@ -1,0 +1,57 @@
+# using fpm only to have a container listening to commands
+FROM php:7.1-fpm
+
+# git is used by composer to clone dependencies
+# zip and unzip allows composer to get archive for tag versions of vendors
+RUN apt-get update && \
+    apt-get install -y \
+        git \
+        libxml2-dev \
+        unzip \
+        zip \
+        zlib1g-dev
+
+# Type docker-php-ext-install to see available extensions
+#RUN docker-php-ext-install bcmath hash intl json mbstring opcache pcntl pdo pdo_mysql soap
+RUN docker-php-ext-install bcmath opcache pdo_mysql zip
+
+# Install phpredis
+RUN curl -sS -o /tmp/phpredis.tar.gz -L https://github.com/phpredis/phpredis/archive/3.1.4.tar.gz \
+    && tar -zxf /tmp/phpredis.tar.gz -C /tmp \
+    && cd /tmp/phpredis-3.1.4 \
+    && phpize \
+    && ./configure \
+    && make \
+    && make install \
+    && echo "extension=redis.so" > /usr/local/etc/php/conf.d/redis.ini
+
+# xdebug
+RUN pecl install xdebug
+
+ADD php.ini /usr/local/etc/php/
+
+# Install composer
+
+RUN EXPECTED_SIGNATURE=$(curl -sSL -o - https://composer.github.io/installer.sig) \
+    && php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
+    && ACTUAL_SIGNATURE=$(php -r "echo hash_file('SHA384', 'composer-setup.php');") \
+    && if [ "$EXPECTED_SIGNATURE" != "$ACTUAL_SIGNATURE" ] ; then >&2 echo 'ERROR: Invalid installer signature'; rm composer-setup.php; exit 1 ; fi \
+    && php composer-setup.php --quiet --install-dir=/usr/local/bin --filename=composer \
+    && rm composer-setup.php
+
+# create user app
+#
+# Usage of {USER_ID} and {GROUP_ID} is a little trick to allow volumes to be write with the right user host mapping
+# For instance, if your user has an id of 1000, files will be written with 1000.
+# Your user has not always an id of 1000. For instance, Jenkins id is below 1000
+RUN groupadd --gid {USER_ID} app && \
+    useradd --home-dir /home/app --create-home --gid {GROUP_ID} --shell /bin/bash --uid {USER_ID} app && \
+    mkdir /app /home/app/.composer && \
+    chown app:app /app /home/app/.composer
+
+USER app
+WORKDIR /app
+
+# install global composer packages
+RUN composer global require hirak/prestissimo \
+    && echo 'PATH=$PATH:/home/app/.composer/vendor/bin' >> /home/app/.bashrc
