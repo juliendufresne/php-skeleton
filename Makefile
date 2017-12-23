@@ -57,6 +57,7 @@ ifeq ($(HAS_TWIG), true)
 endif
 	@echo "\033[32m   lint-yaml        \033[39m   Checks yaml files syntax"
 	@echo "\033[32m   php-cs-fixer     \033[39m   Fix code style in php files"
+	@echo "\033[32m   phpmetrics       \033[39m   Produces a report and metrics"
 	@echo "\033[32m   phpstan          \033[39m   Find bugs in the code"
 	@echo ""
 	@echo "\033[33m Tests commands:\033[39m"
@@ -196,6 +197,9 @@ php-cs-fixer-check:
 	@echo "You have made no change in PHP files compared to master"
 endif
 
+phpmetrics:
+	@echo "\n\033[33m    docker-compose exec php php vendor/bin/phpmetrics --report-html=reports/phpmetrics .\033[39m\n"
+	@                    docker-compose exec php php vendor/bin/phpmetrics --report-html=reports/phpmetrics .
 
 ifeq ($(FAST), false)
 phpstan:
